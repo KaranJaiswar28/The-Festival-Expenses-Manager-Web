@@ -1,0 +1,43 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Donations | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="donations"><div id="nav"></div>
+<main>
+ <h1>All donations</h1><p class="sub" id="sb">Every donation made through the portal, newest first.</p>
+ <div class="stats" id="stats"></div>
+ <div class="tools">
+  <div class="field"><span data-i="search"></span><input type="search" id="q"></div>
+  <div class="chips" id="fl" style="margin:0"></div>
+  <button class="btn sec sm" id="csv"><span data-i="dl"></span>Export CSV</button>
+  <button class="btn sec sm" id="clr"><span data-i="trash"></span>Clear demo data</button>
+ </div>
+ <div class="list" id="list"></div>
+</main>
+<script src="js/app.js"></script>
+<script>
+const me=Auth.require('donations');
+if(me)init();
+function init(){
+const $=id=>document.getElementById(id),full=can('donorDetails'),adm=can('edit');
+let filter='All';const S=['All','Success','Pending','Failed','Cancelled'];
+$('q').placeholder=full?'Search name, mobile or transaction ID':'Search by donor name';
+if(!full)$('sb').textContent='View only. Payment and contact details are hidden for your role.';
+else if(adm)$('sb').textContent='Admin: you can edit or delete any donation.';
+if(!full)$('csv').remove();if(!adm)$('clr').remove();
+function chips(){$('fl').innerHTML=S.map(s=>`<button class="chip ${s===filter?'on':''}" data-s="${s}">${s}</button>`).join('');$('fl').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{filter=c.dataset.s;chips();draw()})}
+function draw(){
+ const all=Store.all(),q=$('q').value.trim().toLowerCase(),ok=all.filter(d=>d.status==='Success');
+ $('stats').innerHTML=`<div class="glass stat"><small>Total collected</small><b style="color:var(--gold)">${inr(ok.reduce((a,d)=>a+d.amount,0))}</b></div><div class="glass stat"><small>Successful donations</small><b>${ok.length}</b></div><div class="glass stat"><small>Failed, cancelled or pending</small><b>${all.length-ok.length}</b></div>`;
+ const rows=all.filter(d=>(filter==='All'||d.status===filter)&&(!q||(full?[d.name,d.mobile,d.txn,d.id]:[d.name]).join(' ').toLowerCase().includes(q)));
+ $('list').innerHTML=rows.length?rows.map(d=>`<div class="glass item"><div class="av">${esc((d.name[0]||'?').toUpperCase())}</div><div><b>${esc(d.name)}</b><small>${full?esc(d.mobile)+' · '+esc(d.txn||d.id)+(d.reason&&d.status!=='Success'?' · '+esc(d.reason):''):when(d.paidAt||d.createdAt)}</small></div><div class="m"><small>${full?'Paid with':'Method'}</small>${esc(full?(d.instrument||d.method):d.method)}</div><div class="d"><small>Date</small>${when(d.paidAt||d.createdAt)}</div><div style="text-align:right"><div class="a">${inr(d.amount)}</div><span class="badge b-${d.status}">${d.status}</span>${adm?` <button class="chip" data-e="${d.id}" aria-label="Edit donation by ${esc(d.name)}">${icon('edit')}</button>`:''}</div></div>`).join('')
+ :`<div class="glass empty">${icon('inbox')}<h2>No donations yet</h2><p>Donations appear here as soon as someone starts one.</p><a class="btn pri sm" style="display:inline-flex;margin-top:14px" href="index.html">Make a donation</a></div>`;
+ document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const d=Store.get(b.dataset.e);Edit.open({title:'Edit donation',values:d,
+  fields:[{k:'name',label:'Donor name'},{k:'mobile',label:'Mobile',type:'tel'},{k:'amount',label:'Amount (₹)',type:'number'},{k:'method',label:'Method',options:['UPI','Card','Net Banking']},{k:'status',label:'Status',options:['Success','Pending','Failed','Cancelled']},{k:'remarks',label:'Message'}],
+  onSave:v=>{if(v.name.length<2)return'Enter the donor name.';if(!/^\d{10}$/.test(v.mobile))return'Enter a 10-digit mobile number.';if(!(Number(v.amount)>0))return'Enter a valid amount.';Store.update(d.id,{...v,amount:Number(v.amount)});draw()},
+  onDelete:()=>{Store.put(Store.all().filter(x=>x.id!==d.id));draw()}})});
+}
+$('q').oninput=draw;
+if($('csv'))$('csv').onclick=()=>{const r=[['Reference','Name','Mobile','Amount','Method','Paid with','Status','Transaction','Date','Message'],...Store.all().map(d=>[d.id,d.name,d.mobile,d.amount,d.method,d.instrument||'',d.status,d.txn||'',d.paidAt||d.createdAt,d.remarks||''])];
+ const t=r.map(a=>a.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='donations.csv';a.click()};
+if($('clr'))$('clr').onclick=()=>{if(confirm('Delete all demo donations from this browser?')){Store.clear();draw()}};
+chips();draw();}
+</script></body></html>

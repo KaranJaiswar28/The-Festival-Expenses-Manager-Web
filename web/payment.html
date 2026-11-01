@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Secure Checkout | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="donate"><div id="nav"></div>
+<main><div class="grid2">
+<section class="glass card">
+ <div class="gwhead"><div><b><span data-i="lock"></span>Secure checkout</b><small>Simulated payment gateway</small></div><div class="timer" id="tm" aria-label="Time left">05:00</div></div>
+ <div id="view"></div>
+</section>
+<aside class="glass card"><h2>Order summary</h2>
+ <div class="rows" id="sum"></div>
+ <div class="demo"><strong>Test mode.</strong> No real money moves and no real bank is contacted. Card numbers and CVV are never saved.</div>
+ <div class="test"><b>Test values</b><ul>
+  <li>UPI: <code>success@upi</code> works, <code>decline@upi</code> is declined, <code>timeout@upi</code> expires. UPI PIN: any 4 to 6 digits (0000 is wrong).</li>
+  <li>Card: <code>4111 1111 1111 1111</code> succeeds, <code>4000 0000 0000 0002</code> declined, <code>4000 0000 0000 9995</code> low balance. Any future expiry and CVV.</li>
+  <li>Net Banking: any customer ID and a password of 6+ characters.</li>
+  <li>OTP appears in the demo message popup.</li></ul></div>
+</aside></div></main>
+<script src="js/config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/app.js"></script>
+<script src="js/cloud.js"></script>
+<script>
+const d=Store.cur();
+if(!d)location.replace('index.html');else if(d.status==='Success')location.replace('result.html');else boot();
+function boot(){
+const V=document.getElementById('view'),amt=inr(d.amount),IC={UPI:'phone',Card:'card','Net Banking':'bank'},BANKS=['State Bank','HDFC Bank','ICICI Bank','Axis Bank','Kotak Bank','Bank of Baroda'];
+const CARDS={'4000000000000002':'Card declined by the issuing bank.','4000000000009995':'Insufficient funds in the account.','4000000000000069':'The card has expired.'};
+let method=d.method,scn='',inst='',otp='',otpAt=0,tries=3,T=null,R=null;
+const $=s=>V.querySelector(s),rand=n=>String(Math.floor(Math.pow(10,n-1)+Math.random()*9*Math.pow(10,n-1)));
+document.getElementById('sum').innerHTML=`<div><span>Donor</span><b>${esc(d.name)}</b></div><div><span>Amount</span><b>${amt}</b></div><div><span>Merchant</span><b>Festival Committee</b></div><div><span>Order ID</span><b>${esc(d.id)}</b></div>`;
+const dk='fem_dl_'+d.id;let dl=Number(sessionStorage.getItem(dk));if(!dl){dl=Date.now()+300000;sessionStorage.setItem(dk,dl)}
+function bye(status,reason){clearTimeout(T);clearInterval(R);sessionStorage.removeItem(dk);Store.update(d.id,{status,reason:reason||'',txn:status==='Cancelled'?null:'DEMO'+rand(6),rrn:status==='Success'?rand(12):'',instrument:inst,method,paidAt:new Date().toISOString()});const go=()=>{location.href='result.html'};if(status==='Success'&&window.Cloud){Promise.race([Cloud.pushDonation(Store.get(d.id)),new Promise(r=>setTimeout(r,4000))]).then(go,go)}else go()}
+const tick=()=>{const s=Math.max(0,Math.round((dl-Date.now())/1000));document.getElementById('tm').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');if(!s)bye('Failed','Payment session expired.')};
+setInterval(tick,1000);tick();
+const foot=`<button class="btn ghost" id="cx" type="button">${icon('ban')}Cancel payment</button>`;
+function show(h){clearTimeout(T);clearInterval(R);V.innerHTML=h;const x=$('#cx');if(x)x.onclick=()=>{if(confirm('Cancel this payment?'))bye('Cancelled','Cancelled by donor.')}}
+const err=m=>{$('#er').textContent=m};
+const luhn=n=>{let s=0,a=false;for(let i=n.length-1;i>=0;i--){let x=+n[i];if(a){x*=2;if(x>9)x-=9}s+=x;a=!a}return n.length>=13&&s%10===0};
+const brand=n=>/^4/.test(n)?'Visa':/^(5[1-5]|2[2-7])/.test(n)?'Mastercard':/^3[47]/.test(n)?'Amex':/^(60|65|81|82)/.test(n)?'RuPay':'Card';
+function form(){
+ let f;
+ if(method==='UPI')f=`<div class="fg"><label for="upi">UPI ID</label><div class="field">${icon('phone')}<input type="text" id="upi" placeholder="name@bank" autocomplete="off" autocapitalize="off"></div></div>`;
+ else if(method==='Card')f=`<div class="fg"><label for="cn">Card number <span class="opt" id="br"></span></label><div class="field">${icon('card')}<input type="text" id="cn" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456" maxlength="23"></div></div>
+ <div class="two"><div class="fg"><label for="ce">Expiry</label><div class="field">${icon('clock')}<input type="text" id="ce" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5"></div></div>
+ <div class="fg"><label for="cv">CVV</label><div class="field">${icon('lock')}<input type="password" id="cv" inputmode="numeric" autocomplete="cc-csc" placeholder="•••" maxlength="4"></div></div></div>
+ <div class="fg"><label for="cm">Name on card</label><div class="field">${icon('user')}<input type="text" id="cm" autocomplete="cc-name" placeholder="As printed on card"></div></div>`;
+ else f=`<div class="fg"><label for="bk">Select your bank</label><select id="bk" class="sel wide">${BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div>`;
+ show(`<div class="tabs" role="tablist">${Object.keys(IC).map(m=>`<button type="button" role="tab" class="tab ${m===method?'on':''}" data-m="${m}">${icon(IC[m])}${m}</button>`).join('')}</div><form id="pf" novalidate>${f}<div class="err" id="er"></div><button class="btn pri" type="submit">${icon('lock')}Pay ${amt}</button></form>${foot}`);
+ V.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{method=t.dataset.m;form()});
+ if(method==='Card'){
+  $('#cn').oninput=e=>{const n=e.target.value.replace(/\D/g,'').slice(0,19);e.target.value=n.replace(/(.{4})/g,'$1 ').trim();$('#br').textContent=n?'('+brand(n)+')':''};
+  $('#ce').oninput=e=>{let v=e.target.value.replace(/\D/g,'').slice(0,4);if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2);e.target.value=v}}
+ $('#pf').onsubmit=e=>{e.preventDefault();scn='';
+  if(method==='UPI'){const v=$('#upi').value.trim().toLowerCase();
+   if(!/^[a-z0-9._-]{2,}@[a-z]{2,}$/.test(v))return err('Enter a valid UPI ID, for example name@bank.');
+   inst='UPI · '+v;if(v.startsWith('decline'))scn='Payment declined by the bank.';return upiWait(v,v.startsWith('timeout'))}
+  if(method==='Card'){const n=$('#cn').value.replace(/\D/g,''),p=$('#ce').value.split('/'),m=+p[0],y=2000+ +p[1],nw=new Date(),cv=$('#cv').value;
+   if(!luhn(n))return err('Enter a valid card number.');
+   if(!(m>=1&&m<=12)||!p[1]||y<nw.getFullYear()||(y===nw.getFullYear()&&m<nw.getMonth()+1))return err('Enter a valid expiry date (MM/YY).');
+   if(!/^\d{3,4}$/.test(cv))return err('Enter a valid CVV.');
+   if($('#cm').value.trim().length<2)return err('Enter the name on the card.');
+   inst=brand(n)+' •••• '+n.slice(-4);scn=CARDS[n]||'';return otpView()}
+  bank($('#bk').value)}}
+function upiWait(id,timeout){let pt=3;
+ show(`<div class="wait"><div class="spin"></div><h2>Approve on your UPI app</h2><p class="sub">A request for <b>${amt}</b> was sent to <b>${esc(id)}</b>. Use the demo UPI app below to approve it.</p></div>
+ <div class="phone"><small>Demo UPI app</small><b>Pay ${amt} to Festival Committee</b><input type="password" id="pin" class="otp" inputmode="numeric" maxlength="6" placeholder="UPI PIN"><div class="err" id="er"></div><button class="btn pri" id="ap" type="button">Approve</button><button class="btn sec" id="dc" type="button">Decline</button></div>${foot}`);
+ if(timeout)T=setTimeout(()=>bye('Failed','UPI request expired. It was not approved in time.'),12000);
+ $('#dc').onclick=()=>bye('Failed','Request was declined in the UPI app.');
+ $('#ap').onclick=()=>{const p=$('#pin').value;if(!/^\d{4,6}$/.test(p))return err('Enter your 4 to 6 digit UPI PIN.');
+  if(/^0+$/.test(p)){pt--;if(pt<=0)return bye('Failed','Too many incorrect UPI PIN attempts.');return err('Incorrect UPI PIN. '+pt+' attempt'+(pt>1?'s':'')+' left.')}
+  run()}}
+function bank(b){show(`<div class="phone"><small>${esc(b)} NetBanking (simulated)</small><b>Log in to authorise ${amt}</b><form id="bf" novalidate><div class="fg"><label for="bu">Customer ID</label><div class="field">${icon('user')}<input type="text" id="bu" autocomplete="off"></div></div><div class="fg"><label for="bp">Password</label><div class="field">${icon('key')}<input type="password" id="bp" autocomplete="off"></div></div><div class="err" id="er"></div><button class="btn pri" type="submit">Log in</button></form></div>${foot}`);
+ $('#bf').onsubmit=e=>{e.preventDefault();if(!$('#bu').value.trim()||$('#bp').value.length<6)return err('Enter your customer ID and a password of 6+ characters.');inst=b+' Net Banking';otpView()}}
+function otpView(note){otp=rand(6);otpAt=Date.now();
+ toast(`<b>Demo SMS</b><br>Your OTP for ${amt} to Festival Committee is <b>${otp}</b>. Valid for 2 minutes. Do not share it.`,25000);
+ show(`<div class="wait">${icon('shield',44)}<h2>Verify with OTP</h2><p class="sub">Enter the 6-digit code sent to ******${esc(d.mobile.slice(-4))}. It appears in the demo message popup.</p></div><form id="of" novalidate><input type="text" id="ot" class="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••" style="padding-left:14px"><div class="err" id="er">${note||''}</div><button class="btn pri" type="submit">Verify and pay ${amt}</button></form><button class="btn sec" id="rs" type="button" disabled>Resend OTP in 30s</button>${foot}`);
+ let s=30;R=setInterval(()=>{s--;const b=$('#rs');if(!b)return;if(s>0)b.textContent='Resend OTP in '+s+'s';else{b.disabled=false;b.textContent='Resend OTP';clearInterval(R)}},1000);
+ $('#rs').onclick=()=>otpView('A new OTP was sent.');
+ $('#of').onsubmit=e=>{e.preventDefault();
+  if(Date.now()-otpAt>120000)return err('OTP expired. Request a new one.');
+  if($('#ot').value.trim()!==otp){tries--;if(tries<=0)return bye('Failed','Too many incorrect OTP attempts.');return err('Incorrect OTP. '+tries+' attempt'+(tries>1?'s':'')+' left.')}
+  run()}}
+function run(){const st=['Verifying payment details','Contacting your bank','Confirming the transaction'];
+ show(`<div class="wait"><div class="spin"></div><h2>Processing payment</h2><p class="sub">Please do not refresh or close this page.</p></div><ul class="stl">${st.map((s,i)=>`<li id="s${i}">${icon('clock')}${s}</li>`).join('')}</ul>`);
+ st.forEach((s,i)=>setTimeout(()=>{const l=document.getElementById('s'+i);if(l){l.classList.add('done');l.innerHTML=icon('ok')+s}},800*(i+1)));
+ T=setTimeout(()=>bye(scn?'Failed':'Success',scn),800*st.length+500)}
+form();
+}
+</script></body></html>

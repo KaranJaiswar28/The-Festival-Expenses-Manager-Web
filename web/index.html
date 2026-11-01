@@ -1,0 +1,51 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Donate | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="donate"><div id="nav"></div>
+<main><div class="grid2">
+<section class="glass card">
+ <h1>Support our festival</h1>
+ <p class="sub">Every contribution helps us celebrate together. Fill in your details to continue.</p>
+ <div id="steps"></div>
+ <form id="f" novalidate>
+  <div class="fg"><label for="name">Donor name</label><div class="field"><span data-i="user"></span><input type="text" id="name" placeholder="Enter your name" autocomplete="name" required></div><div class="err" id="e-name"></div></div>
+  <div class="fg"><label for="mobile">Mobile number</label><div class="field"><span data-i="phone"></span><input type="tel" id="mobile" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" autocomplete="tel" required></div><div class="err" id="e-mobile"></div></div>
+  <div class="fg"><label for="amount">Donation amount</label>
+   <div class="chips" id="chips"><button type="button" class="chip" data-a="101">₹101</button><button type="button" class="chip" data-a="501">₹501</button><button type="button" class="chip" data-a="1001">₹1,001</button><button type="button" class="chip" data-a="2001">₹2,001</button></div>
+   <div class="field"><span data-i="rupee"></span><input type="number" id="amount" placeholder="Or enter a custom amount" min="1" inputmode="numeric" required></div><div class="err" id="e-amount"></div></div>
+  <div class="fg"><span class="lbl">Payment method</span>
+   <div class="pay">
+    <label><input type="radio" name="pm" value="UPI"><span><i data-i="phone"></i>UPI</span></label>
+    <label><input type="radio" name="pm" value="Card"><span><i data-i="card"></i>Card</span></label>
+    <label><input type="radio" name="pm" value="Net Banking"><span><i data-i="bank"></i>Net Banking</span></label>
+   </div><div class="err" id="e-pm"></div></div>
+  <div class="fg"><label for="remarks">Message <span class="opt">(optional)</span></label><div class="field ta"><span data-i="msg"></span><textarea id="remarks" placeholder="Add a note for the committee"></textarea></div></div>
+  <button class="btn pri" type="submit">Continue to payment <span data-i="arrow"></span></button>
+ </form>
+ <div class="note"><span data-i="lock"></span>Your details are used only for this donation record.</div>
+ <div class="demo"><strong>Demo payment system.</strong> No real money is charged.</div>
+</section>
+<aside class="glass card">
+ <h2>Why donate?</h2>
+ <p class="sub">Funds go to decorations, prasad, lighting, sound and cultural programs. Every receipt is recorded in the festival ledger.</p>
+ <div class="rows"><div><span>Quick pick</span><b>₹101 – ₹2,001</b></div><div><span>Methods</span><b>UPI, Card, Net Banking</b></div><div><span>Receipt</span><b>Printable, instantly</b></div></div>
+ <a class="btn sec" href="donations.html"><span data-i="list"></span>View all donations</a>
+</aside></div></main>
+<script src="js/app.js"></script>
+<script>
+document.getElementById('steps').innerHTML=stepper(1);
+const $=id=>document.getElementById(id);$('chips').innerHTML=Cfg().amounts.map(a=>`<button type="button" class="chip" data-a="${a}">${inr(a)}</button>`).join('');const chips=[...document.querySelectorAll('.chip')];
+chips.forEach(c=>c.onclick=()=>{$('amount').value=c.dataset.a;chips.forEach(x=>x.classList.toggle('on',x===c))});
+$('amount').oninput=()=>chips.forEach(x=>x.classList.toggle('on',x.dataset.a===$('amount').value));
+$('f').onsubmit=e=>{e.preventDefault();
+ const name=$('name').value.trim(),mobile=$('mobile').value.trim(),amount=Number($('amount').value),pm=document.querySelector('input[name=pm]:checked');
+ const set=(k,m)=>{$('e-'+k).textContent=m;return !m};
+ let ok=true;
+ ok&=set('name',name.length<2?'Enter the donor name.':'');
+ ok&=set('mobile',/^[6-9]\d{9}$/.test(mobile)?'':'Enter a valid 10-digit mobile number.');
+ ok&=set('amount',amount>0?'':'Enter an amount greater than ₹0.');
+ ok&=set('pm',pm?'':'Choose a payment method.');
+ if(!ok)return;
+ const id='FEM'+Date.now().toString(36).toUpperCase();
+ Store.add({id,name,mobile,amount,method:pm.value,remarks:$('remarks').value.trim(),by:(Auth.me()||{}).id||null,status:'Pending',txn:null,createdAt:new Date().toISOString(),paidAt:null});
+ Store.setCur(id);location.href='payment.html';
+};
+</script></body></html>

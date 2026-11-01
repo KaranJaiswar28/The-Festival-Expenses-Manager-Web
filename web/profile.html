@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Profile | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="profile"><div id="nav"></div>
+<main><div class="grid2">
+<section class="glass card"><h1>Edit profile</h1><p class="sub" id="who"></p>
+ <form id="f" novalidate>
+  <div class="fg"><span class="lbl">Avatar colour</span><div class="sw" id="sw"></div></div>
+  <div class="fg"><label for="n">Full name</label><div class="field"><span data-i="user"></span><input type="text" id="n"></div></div>
+  <div class="fg"><label for="e">Email</label><div class="field"><span data-i="mail"></span><input type="email" id="e"></div></div>
+  <div class="fg"><label for="m">Mobile number</label><div class="field"><span data-i="phone"></span><input type="tel" id="m" maxlength="10" inputmode="numeric"></div></div>
+  <div class="err" id="er"></div>
+  <button class="btn pri" type="submit"><span data-i="ok"></span>Save changes</button>
+ </form></section>
+<section class="glass card"><h2>Change password</h2>
+ <form id="pf" novalidate>
+  <div class="fg"><label for="o">Current password</label><div class="field"><span data-i="lock"></span><input type="password" id="o" autocomplete="current-password"></div></div>
+  <div class="fg"><label for="np">New password</label><div class="field"><span data-i="key"></span><input type="password" id="np" autocomplete="new-password" placeholder="At least 6 characters"></div></div>
+  <div class="err" id="ep"></div>
+  <button class="btn sec" type="submit">Update password</button>
+ </form>
+ <button class="btn ghost" id="lo" style="color:var(--bad)"><span data-i="logout"></span>Sign out</button></section>
+</div></main>
+<script src="js/app.js"></script>
+<script>
+let me=Auth.require('profile');
+if(me){const $=id=>document.getElementById(id);let col=me.color||0;
+ $('who').innerHTML=`${avatar(me,'sm')} &nbsp;${esc(me.role)} access`;
+ $('n').value=me.name;$('e').value=me.email;$('m').value=me.mobile||'';
+ const sw=()=>{$('sw').innerHTML=COL.map((k,i)=>`<button type="button" class="${i===col?'on':''}" data-c="${i}" aria-label="Colour ${i+1}" style="background:linear-gradient(135deg,${k[0]},${k[1]})"></button>`).join('');$('sw').querySelectorAll('button').forEach(b=>b.onclick=()=>{col=+b.dataset.c;sw()})};sw();
+ $('f').onsubmit=e=>{e.preventDefault();const n=$('n').value.trim(),em=$('e').value.trim().toLowerCase(),m=$('m').value.trim();
+  if(n.length<2)return $('er').textContent='Enter your name.';if(!/^\S+@\S+\.\S+$/.test(em))return $('er').textContent='Enter a valid email.';if(!/^[6-9]\d{9}$/.test(m))return $('er').textContent='Enter a valid 10-digit mobile number.';
+  if(Auth.users().some(u=>u.email===em&&u.id!==me.id))return $('er').textContent='That email is used by another account.';
+  Auth.update(me.id,{name:n,email:em,mobile:m,color:col});location.reload()};
+ $('pf').onsubmit=e=>{e.preventDefault();if(me.pw!==hp($('o').value))return $('ep').textContent='Current password is incorrect.';if($('np').value.length<6)return $('ep').textContent='New password must be at least 6 characters.';
+  Auth.update(me.id,{pw:hp($('np').value)});$('ep').textContent='';$('o').value=$('np').value='';toast('Password updated.')};
+ $('lo').onclick=()=>Auth.logout();}
+</script></body></html>

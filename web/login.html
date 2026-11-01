@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Sign in | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="login"><div id="nav"></div>
+<main><section class="glass card narrow">
+ <h1>Welcome back</h1><p class="sub">Sign in to manage donations and expenses.</p>
+ <div class="tabs2"><button class="chip on" id="t1" type="button">Sign in</button><button class="chip" id="t2" type="button">Create account</button></div>
+ <form id="fi" novalidate>
+  <div class="fg"><label for="le">Email</label><div class="field"><span data-i="mail"></span><input type="email" id="le" autocomplete="username" placeholder="you@example.com"></div></div>
+  <div class="fg"><label for="lp">Password</label><div class="field"><span data-i="key"></span><input type="password" id="lp" autocomplete="current-password" placeholder="Your password"></div></div>
+  <div class="err" id="e1"></div>
+  <button class="btn pri" type="submit"><span data-i="login"></span>Sign in</button>
+ </form>
+ <form id="fr" novalidate hidden>
+  <div class="fg"><label for="rn">Full name</label><div class="field"><span data-i="user"></span><input type="text" id="rn" autocomplete="name" placeholder="Your name"></div></div>
+  <div class="fg"><label for="rm">Mobile number</label><div class="field"><span data-i="phone"></span><input type="tel" id="rm" maxlength="10" inputmode="numeric" placeholder="10-digit mobile"></div></div>
+  <div class="fg"><label for="re">Email</label><div class="field"><span data-i="mail"></span><input type="email" id="re" autocomplete="username" placeholder="you@example.com"></div></div>
+  <div class="fg"><label for="rp">Password</label><div class="field"><span data-i="key"></span><input type="password" id="rp" autocomplete="new-password" placeholder="At least 6 characters"></div></div>
+  <div class="err" id="e2"></div>
+  <button class="btn pri" type="submit"><span data-i="plus"></span>Create account</button>
+  <p class="note">New accounts get Member access. An Admin can upgrade your role in Settings.</p>
+ </form>
+ <div class="demoacc" id="da"><small style="color:var(--mute)">Demo accounts (tap to fill)</small>
+  <button type="button" data-e="admin@festival.app" data-p="admin123">Admin <small>edit everything</small></button>
+  <button type="button" data-e="treasurer@festival.app" data-p="treasurer123">Treasurer <small>view all, add expenses</small></button>
+  <button type="button" data-e="member@festival.app" data-p="member123">Member <small>view only</small></button>
+ </div>
+ <a class="btn ghost" href="index.html"><span data-i="back"></span>Back to donation page</a>
+</section></main>
+<script src="js/app.js"></script>
+<script>
+const $=id=>document.getElementById(id),nx=new URLSearchParams(location.search).get('next')||'',dest=/^[a-z-]+\.html$/.test(nx)?nx:'home.html';
+if(Auth.me())location.replace(dest);
+if(new URLSearchParams(location.search).get('removed'))$('e1').textContent='An admin signed you out. Please sign in again.';
+const sw=m=>{$('fi').hidden=m!==1;$('fr').hidden=m!==2;$('da').hidden=m!==1;$('t1').classList.toggle('on',m===1);$('t2').classList.toggle('on',m===2)};
+$('t1').onclick=()=>sw(1);$('t2').onclick=()=>sw(2);
+document.querySelectorAll('#da button').forEach(b=>b.onclick=()=>{$('le').value=b.dataset.e;$('lp').value=b.dataset.p});
+$('fi').onsubmit=e=>{e.preventDefault();const u=Auth.login($('le').value,$('lp').value);if(!u)return $('e1').textContent='Incorrect email or password.';location.href=dest};
+$('fr').onsubmit=e=>{e.preventDefault();const o={name:$('rn').value.trim(),mobile:$('rm').value.trim(),email:$('re').value.trim().toLowerCase(),pw:$('rp').value},E=$('e2');
+ if(o.name.length<2)return E.textContent='Enter your name.';
+ if(!/^[6-9]\d{9}$/.test(o.mobile))return E.textContent='Enter a valid 10-digit mobile number.';
+ if(!/^\S+@\S+\.\S+$/.test(o.email))return E.textContent='Enter a valid email.';
+ if(o.pw.length<6)return E.textContent='Password must be at least 6 characters.';
+ if(!Auth.register(o))return E.textContent='An account with this email already exists.';
+ location.href=dest};
+</script></body></html>

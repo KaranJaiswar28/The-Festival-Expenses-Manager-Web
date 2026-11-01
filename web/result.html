@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Receipt | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="donate"><div id="nav"></div>
+<main><section class="glass card narrow" id="box"></section></main>
+<script src="js/config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/app.js"></script>
+<script src="js/cloud.js"></script>
+<script>
+if(window.Cloud)Cloud.syncPending();
+const d=Store.cur();
+if(!d||d.status==='Pending'){location.replace(d?'payment.html':'index.html')}else{
+const M={Success:['ok','Thank you for your donation','Your donation has been recorded in the festival ledger.'],
+Failed:['no','Payment failed','Your payment could not be completed. You can try again.'],
+Cancelled:['ban','Payment cancelled','No payment has been completed.']}[d.status];
+document.getElementById('box').innerHTML=`${stepper(3)}
+<div class="hero ${d.status}"><div class="big">${icon(M[0])}</div><h1>${M[1]}</h1><p class="sub">${esc(d.status!=='Success'&&d.reason?d.reason:M[2])}</p>${d.status==='Success'?`<div class="amt">${inr(d.amount)}</div>`:''}</div>
+<div class="rows"><div><span>Status</span><b><span class="badge b-${d.status}">${d.status}</span></b></div>
+<div><span>Donor</span><b>${esc(d.name)}</b></div><div><span>Mobile</span><b>${esc(d.mobile)}</b></div>
+${d.status!=='Success'?`<div><span>Amount</span><b>${inr(d.amount)}</b></div>`:''}
+<div><span>Paid with</span><b>${esc(d.instrument||d.method)}</b></div>
+${d.txn?`<div><span>Transaction ID</span><b>${esc(d.txn)}</b></div>`:''}${d.rrn?`<div><span>Bank reference (RRN)</span><b>${esc(d.rrn)}</b></div>`:''}
+<div><span>Reference</span><b>${esc(d.id)}</b></div><div><span>Date</span><b>${when(d.paidAt||d.createdAt)}</b></div>
+${d.remarks?`<div><span>Message</span><b>${esc(d.remarks)}</b></div>`:''}</div>
+${d.status==='Success'?`<button class="btn pri" onclick="print()">${icon('print')}Print receipt</button><a class="btn sec" href="index.html">${icon('heart')}Donate again</a>`
+:`<a class="btn pri" href="payment.html">${icon('refresh')}${d.status==='Failed'?'Try again':'Return to payment'}</a>`}
+<a class="btn ghost" href="donations.html">${icon('list')}View all donations</a>
+<div class="demo"><strong>Demo payment system.</strong> This is a simulated result for project demonstration.</div>`;
+}
+</script></body></html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Expenses | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="expenses"><div id="nav"></div>
+<main>
+ <h1>Expenses</h1><p class="sub" id="sb">Balance = donations collected minus expenses.</p>
+ <div class="stats" id="st"></div>
+ <div class="grid2" id="g">
+  <section class="glass card" id="fc"><h2>Add expense</h2>
+   <form id="f" novalidate>
+    <div class="fg"><label for="t">Title</label><div class="field"><span data-i="msg"></span><input type="text" id="t" placeholder="e.g. Flower decoration"></div></div>
+    <div class="two"><div class="fg"><label for="a">Amount</label><div class="field"><span data-i="rupee"></span><input type="number" id="a" min="1" inputmode="numeric" placeholder="0"></div></div>
+    <div class="fg"><label for="d">Date</label><input type="date" id="d" class="plain"></div></div>
+    <div class="two"><div class="fg"><label for="c">Category</label><select id="c" class="sel wide"></select></div>
+    <div class="fg"><label for="p">Paid to</label><div class="field"><span data-i="user"></span><input type="text" id="p" placeholder="Vendor name"></div></div></div>
+    <div class="err" id="er"></div>
+    <button class="btn pri" type="submit"><span data-i="plus"></span>Add expense</button>
+   </form></section>
+  <section class="glass card"><h2>By category</h2><div id="cat"></div></section>
+ </div>
+ <h2 style="margin:24px 0 12px">All expenses</h2><div class="list" id="ls"></div>
+</main>
+<script src="js/app.js"></script>
+<script>
+const me=Auth.require('expenses');
+if(me){
+const CATS=['Decoration','Food & Prasad','Sound & Lighting','Pooja Items','Cultural Program','Transport','Other'],$=id=>document.getElementById(id),add=can('addExpense'),adm=can('edit');
+if(!add){$('fc').remove();$('g').style.gridTemplateColumns='1fr';$('sb').textContent='View only. Only a Treasurer or Admin can add expenses.'}
+else if(adm)$('sb').textContent='Admin: you can add, edit and delete any expense.';
+else $('sb').textContent='You can add expenses. Only an Admin can edit or delete them.';
+if(add){$('c').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');$('d').value=new Date().toISOString().slice(0,10)}
+function draw(){
+ const ex=Exp.all(),sp=ex.reduce((a,e)=>a+e.amount,0),col=Store.all().filter(d=>d.status==='Success').reduce((a,d)=>a+d.amount,0),bal=col-sp;
+ $('st').innerHTML=`<div class="glass stat"><small>Collected</small><b style="color:var(--gold)">${inr(col)}</b></div><div class="glass stat"><small>Spent</small><b>${inr(sp)}</b></div><div class="glass stat"><small>Balance</small><b style="color:${bal<0?'var(--bad)':'var(--ok)'}">${inr(bal)}</b></div>`;
+ const by=CATS.map(c=>[c,ex.filter(e=>e.cat===c).reduce((a,e)=>a+e.amount,0)]).filter(x=>x[1]>0);
+ $('cat').innerHTML=by.map(x=>`<div class="mini" style="display:block"><div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${inr(x[1])}</b></div><div class="bar"><i style="width:${Math.round(x[1]/sp*100)}%"></i></div></div>`).join('')||'<p class="sub">No expenses yet.</p>';
+ $('ls').innerHTML=ex.length?ex.map(e=>`<div class="glass item" style="grid-template-columns:44px 1.6fr 1fr auto"><div class="av" style="font-size:0">${icon('wallet',20)}</div><div><b>${esc(e.title)}</b><small>${esc(e.cat)} · ${esc(e.payee||'—')}</small></div><div class="m"><small>Date</small>${esc(e.date)}</div><div style="text-align:right"><div class="a">${inr(e.amount)}</div>${adm?`<button class="chip" data-e="${e.id}" aria-label="Edit ${esc(e.title)}">${icon('edit')}</button>`:''}</div></div>`).join(''):`<div class="glass empty">${icon('inbox')}<p>No expenses recorded yet.</p></div>`;
+ document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const x=Exp.all().find(e=>e.id===b.dataset.e);Edit.open({title:'Edit expense',values:x,
+  fields:[{k:'title',label:'Title'},{k:'amount',label:'Amount (₹)',type:'number'},{k:'date',label:'Date',type:'date'},{k:'cat',label:'Category',options:CATS},{k:'payee',label:'Paid to'}],
+  onSave:v=>{if(v.title.length<2)return'Enter a title.';if(!(Number(v.amount)>0))return'Enter a valid amount.';if(!v.date)return'Pick a date.';Exp.put(Exp.all().map(e=>e.id===x.id?{...e,...v,amount:Number(v.amount)}:e));draw()},
+  onDelete:()=>{Exp.put(Exp.all().filter(e=>e.id!==x.id));draw()}})});
+}
+if(add)$('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim(),a=Number($('a').value);
+ if(t.length<2)return $('er').textContent='Enter a title.';if(!(a>0))return $('er').textContent='Enter an amount greater than 0.';if(!$('d').value)return $('er').textContent='Pick a date.';
+ const l=Exp.all();l.unshift({id:'E'+Date.now().toString(36),title:t,amount:a,cat:$('c').value,date:$('d').value,payee:$('p').value.trim(),by:me.id});Exp.put(l);
+ $('er').textContent='';$('t').value='';$('a').value='';$('p').value='';draw();toast('Expense added.')};
+draw();}
+</script></body></html>
