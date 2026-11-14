@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1b0c02"><title>Team | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<body data-page="team"><div id="nav"></div>
+<main>
+ <h1>Team</h1><p class="sub">Admin only. Manage logins, roles and see who is signed in.</p>
+ <h2 style="margin:8px 0 12px">Active logins</h2><div class="list" id="ss"></div>
+ <h2 style="margin:24px 0 12px">Users</h2><div class="list" id="us"></div>
+ <h2 style="margin:24px 0 12px">Login history</h2><div class="glass card" id="lh"></div>
+</main>
+<script src="js/app.js"></script>
+<script>
+const me=Auth.require('team');
+if(me){const $=id=>document.getElementById(id),mine=sessionStorage.getItem('fem_sid');
+ function sess(){const us=Auth.users();
+  $('ss').innerHTML=Auth.sessions().map(s=>{const u=us.find(x=>x.id===s.uid);if(!u)return'';return `<div class="glass urow">${avatar(u)}<div><b>${esc(u.name)}</b><small>${esc(u.role)} · signed in ${when(s.at)}</small></div><span class="badge b-Success">Online</span>${s.sid===mine?'<span class="badge b-Pending">This device</span>':`<button class="chip" data-s="${s.sid}">${icon('logout')} Remove login</button>`}</div>`}).join('')||'<div class="glass empty"><p>No active logins.</p></div>';
+  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{if(confirm('Sign this user out now?')){Auth.revoke(b.dataset.s);sess();toast('Login removed.')}});
+  $('lh').innerHTML=DB.get('fem_logins',[]).slice(0,15).map(h=>`<div class="mini"><div><b>${esc(h.name)}</b><small>${esc(h.role)} · ${esc(h.how)}</small></div><small>${when(h.at)}</small></div>`).join('')||'<p class="sub">No logins yet.</p>'}
+ function users(){$('us').innerHTML=Auth.users().map(u=>`<div class="glass urow">${avatar(u)}<div><b>${esc(u.name)}</b><small>${esc(u.email)}</small></div>
+  <select class="sel" data-r="${u.id}" ${u.id===me.id?'disabled':''} aria-label="Role for ${esc(u.name)}">${['Admin','Treasurer','Member'].map(r=>`<option ${r===u.role?'selected':''}>${r}</option>`).join('')}</select>
+  <div style="display:flex;gap:6px"><button class="chip" data-u="${u.id}" aria-label="Edit ${esc(u.name)}">${icon('edit')}</button>${u.id===me.id?'<span class="badge b-Success">You</span>':`<button class="chip" data-d="${u.id}" aria-label="Remove ${esc(u.name)}">${icon('trash')}</button>`}</div></div>`).join('');
+  document.querySelectorAll('[data-r]').forEach(s=>s.onchange=()=>{Auth.update(s.dataset.r,{role:s.value});toast('Role updated.')});
+  document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{if(confirm('Remove this user and their login?')){Auth.dropUser(b.dataset.d);users();sess()}});
+  document.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{const u=Auth.users().find(x=>x.id===b.dataset.u);Edit.open({title:'Edit user',values:u,
+   fields:[{k:'name',label:'Full name'},{k:'email',label:'Email',type:'email'},{k:'mobile',label:'Mobile',type:'tel'},{k:'role',label:'Role',options:['Admin','Treasurer','Member']},{k:'pw',label:'New password (leave blank to keep)',type:'password'}],
+   onSave:v=>{v.email=v.email.toLowerCase();if(v.name.length<2)return'Enter a name.';if(!/^\S+@\S+\.\S+$/.test(v.email))return'Enter a valid email.';if(Auth.users().some(x=>x.email===v.email&&x.id!==u.id))return'Email already used.';if(v.pw&&v.pw.length<6)return'Password needs 6+ characters.';
+    const p={name:v.name,email:v.email,mobile:v.mobile,role:u.id===me.id?u.role:v.role};if(v.pw)p.pw=hp(v.pw);Auth.update(u.id,p);users();sess()}})})}
+ users();sess();
+ window.addEventListener('storage',e=>{if(e.key==='fem_sessions'||e.key==='fem_logins')sess()});}
+</script></body></html>
