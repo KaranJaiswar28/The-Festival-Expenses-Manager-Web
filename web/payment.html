@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Secure Checkout | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1b0c02"><title>Secure Checkout | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
 <body data-page="donate"><div id="nav"></div>
 <main><div class="grid2">
 <section class="glass card">
@@ -14,6 +14,7 @@
   <li>Net Banking: any customer ID and a password of 6+ characters.</li>
   <li>OTP appears in the demo message popup.</li></ul></div>
 </aside></div></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="js/config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -29,7 +30,7 @@ let method=d.method,scn='',inst='',otp='',otpAt=0,tries=3,T=null,R=null;
 const $=s=>V.querySelector(s),rand=n=>String(Math.floor(Math.pow(10,n-1)+Math.random()*9*Math.pow(10,n-1)));
 document.getElementById('sum').innerHTML=`<div><span>Donor</span><b>${esc(d.name)}</b></div><div><span>Amount</span><b>${amt}</b></div><div><span>Merchant</span><b>Festival Committee</b></div><div><span>Order ID</span><b>${esc(d.id)}</b></div>`;
 const dk='fem_dl_'+d.id;let dl=Number(sessionStorage.getItem(dk));if(!dl){dl=Date.now()+300000;sessionStorage.setItem(dk,dl)}
-function bye(status,reason){clearTimeout(T);clearInterval(R);sessionStorage.removeItem(dk);Store.update(d.id,{status,reason:reason||'',txn:status==='Cancelled'?null:'DEMO'+rand(6),rrn:status==='Success'?rand(12):'',instrument:inst,method,paidAt:new Date().toISOString()});const go=()=>{location.href='result.html'};if(status==='Success'&&window.Cloud){Promise.race([Cloud.pushDonation(Store.get(d.id)),new Promise(r=>setTimeout(r,4000))]).then(go,go)}else go()}
+function bye(status,reason,utr){clearTimeout(T);clearInterval(R);sessionStorage.removeItem(dk);Store.update(d.id,{status,reason:reason||'',txn:status==='Cancelled'?null:'DEMO'+rand(6),rrn:utr||(status==='Success'?rand(12):''),instrument:inst,method,paidAt:new Date().toISOString()});const go=()=>{location.href='result.html'};if(status==='Success'&&window.Cloud){Promise.race([Cloud.pushDonation(Store.get(d.id)),new Promise(r=>setTimeout(r,4000))]).then(go,go)}else go()}
 const tick=()=>{const s=Math.max(0,Math.round((dl-Date.now())/1000));document.getElementById('tm').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');if(!s)bye('Failed','Payment session expired.')};
 setInterval(tick,1000);tick();
 const foot=`<button class="btn ghost" id="cx" type="button">${icon('ban')}Cancel payment</button>`;
@@ -45,8 +46,8 @@ function form(){
  <div class="fg"><label for="cv">CVV</label><div class="field">${icon('lock')}<input type="password" id="cv" inputmode="numeric" autocomplete="cc-csc" placeholder="•••" maxlength="4"></div></div></div>
  <div class="fg"><label for="cm">Name on card</label><div class="field">${icon('user')}<input type="text" id="cm" autocomplete="cc-name" placeholder="As printed on card"></div></div>`;
  else f=`<div class="fg"><label for="bk">Select your bank</label><select id="bk" class="sel wide">${BANKS.map(b=>`<option>${b}</option>`).join('')}</select></div>`;
- show(`<div class="tabs" role="tablist">${Object.keys(IC).map(m=>`<button type="button" role="tab" class="tab ${m===method?'on':''}" data-m="${m}">${icon(IC[m])}${m}</button>`).join('')}</div><form id="pf" novalidate>${f}<div class="err" id="er"></div><button class="btn pri" type="submit">${icon('lock')}Pay ${amt}</button></form>${foot}`);
- V.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{method=t.dataset.m;form()});
+ show(`<div class="tabs" role="tablist">${Object.keys(IC).map(m=>`<button type="button" role="tab" class="tab ${m===method?'on':''}" data-m="${m}">${icon(IC[m])}${m}</button>`).join('')}</div><form id="pf" novalidate>${f}<div class="err" id="er"></div><button class="btn pri" type="submit">${icon('lock')}Pay ${amt}</button></form>${method==='UPI'&&Cfg().upi?realPanel():''}${foot}`);
+ V.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{method=t.dataset.m;form()});bindReal();
  if(method==='Card'){
   $('#cn').oninput=e=>{const n=e.target.value.replace(/\D/g,'').slice(0,19);e.target.value=n.replace(/(.{4})/g,'$1 ').trim();$('#br').textContent=n?'('+brand(n)+')':''};
   $('#ce').oninput=e=>{let v=e.target.value.replace(/\D/g,'').slice(0,4);if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2);e.target.value=v}}
@@ -61,6 +62,10 @@ function form(){
    if($('#cm').value.trim().length<2)return err('Enter the name on the card.');
    inst=brand(n)+' •••• '+n.slice(-4);scn=CARDS[n]||'';return otpView()}
   bank($('#bk').value)}}
+const upiLink=()=>`upi://pay?pa=${Cfg().upi}&pn=${encodeURIComponent(Cfg().event)}&am=${d.amount}&cu=INR&tn=${encodeURIComponent('Donation '+d.id)}`;
+function realPanel(){return `<div class="phone upi-real"><small>Or pay with any UPI app (real payment)</small><b>Scan the QR or open your UPI app</b><div class="qrbox" id="uq" style="margin:10px auto"></div><a class="btn sec" href="${esc(upiLink())}">${icon('phone')}Open UPI app</a><div class="fg" style="margin-top:12px"><label for="utr">UPI reference number (12 digits)</label><div class="field">${icon('key')}<input type="text" id="utr" inputmode="numeric" maxlength="12" autocomplete="off"></div></div><div class="err" id="er2"></div><button type="button" class="btn pri" id="paid">${icon('ok')}I have paid</button><p class="note">Money goes directly to the mandal's UPI ID. The treasurer verifies the reference number.</p></div>`}
+function bindReal(){if(method!=='UPI'||!Cfg().upi)return;if(window.QRCode)new QRCode($('#uq'),{text:upiLink(),width:170,height:170});
+ $('#paid').onclick=()=>{const u=$('#utr').value.trim();if(!/^\d{12}$/.test(u))return $('#er2').textContent='Enter the 12-digit UPI reference number.';inst='UPI · UTR '+u;bye('Success','',u)}}
 function upiWait(id,timeout){let pt=3;
  show(`<div class="wait"><div class="spin"></div><h2>Approve on your UPI app</h2><p class="sub">A request for <b>${amt}</b> was sent to <b>${esc(id)}</b>. Use the demo UPI app below to approve it.</p></div>
  <div class="phone"><small>Demo UPI app</small><b>Pay ${amt} to Festival Committee</b><input type="password" id="pin" class="otp" inputmode="numeric" maxlength="6" placeholder="UPI PIN"><div class="err" id="er"></div><button class="btn pri" id="ap" type="button">Approve</button><button class="btn sec" id="dc" type="button">Decline</button></div>${foot}`);

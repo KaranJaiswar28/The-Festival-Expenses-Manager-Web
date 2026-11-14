@@ -34,13 +34,14 @@ clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 7L2 7"/>',
 key:'<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M16 7l3 3"/>',
 plus:'<path d="M12 5v14M5 12h14"/>',
-chev:'<path d="m6 9 6 6 6-6"/>'};
+chev:'<path d="m6 9 6 6 6-6"/>',dash:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',chart:'<path d="M3 3v18h18M7 15v3M12 9v9M17 5v13"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'};
 const icon=(n,s)=>`<svg class="ic" viewBox="0 0 24 24"${s?` style="width:${s}px;height:${s}px"`:''} aria-hidden="true">${P[n]||''}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const when=iso=>iso?new Date(iso).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
+const Theme={get(){return localStorage.getItem('fem_theme')||'light'},apply(){document.documentElement.dataset.theme=this.get()},toggle(){localStorage.setItem('fem_theme',this.get()==='dark'?'light':'dark');this.apply()}};Theme.apply();
 const DB={get(k,f){try{const v=JSON.parse(localStorage.getItem(k));return v==null?f:v}catch(e){return f}},set(k,v){localStorage.setItem(k,JSON.stringify(v))}};
-const DEF={event:'Festival Expense Manager',committee:'Donation Portal',upi:'festival@upi',amounts:[101,501,1001,2001]};
+const DEF={event:'Festival Expense Manager',committee:'Donation Portal',upi:'',amounts:[101,501,1001,2001]};
 const Cfg=()=>({...DEF,...DB.get('fem_settings',{})});
 /* Donations */
 const Store={K:'fem_donations',C:'fem_current',
@@ -57,7 +58,7 @@ const Exp={all:()=>DB.get('fem_expenses',[]),put:l=>DB.set('fem_expenses',l),cle
 const h53=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0,c;i<s.length;i++){c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return(4294967296*(2097151&b)+(a>>>0)).toString(36)};
 const hp=p=>h53('fem:'+p);
 const COL=[['#ffb52e','#ff5d8f'],['#2dd4bf','#3b82f6'],['#a78bfa','#ec4899'],['#4ade80','#14b8a6'],['#fb923c','#ef4444']];
-const ACCESS={home:['Admin','Treasurer','Member'],donations:['Admin','Treasurer','Member'],expenses:['Admin','Treasurer','Member'],settings:['Admin'],profile:['Admin','Treasurer','Member']};
+const ACCESS={home:['Admin','Treasurer','Member'],donations:['Admin','Treasurer','Member'],expenses:['Admin','Treasurer','Member'],reports:['Admin','Treasurer','Member'],team:['Admin'],settings:['Admin','Treasurer','Member'],profile:['Admin','Treasurer','Member']};
 const Auth={
  users(){return DB.get('fem_users',[])},save(u){DB.set('fem_users',u)},
  seed(){if(this.users().length)return;this.save([
@@ -104,15 +105,22 @@ const Edit={open({title,fields,values,onSave,onDelete}){
  if(onDelete)d.querySelector('#ef_d').onclick=()=>{if(confirm('Delete this record permanently?')){onDelete();cl()}};
  d.querySelector('form').onsubmit=e=>{e.preventDefault();const v={};fields.forEach(f=>v[f.k]=d.querySelector('#ef_'+f.k).value.trim());const er=onSave(v);if(er)d.querySelector('#ef_er').textContent=er;else cl()};
  d.showModal()}};
+/* Ticket-style receipt / voucher */
+const Ticket={
+ html(o){return `<div class="ticket" style="--tk:${o.c1||'#ff9800'};--tk2:${o.c2||'#e65100'}"><div class="t-top"><div class="org">${esc(o.org)}</div><small>${esc(o.kind)}</small><div class="t-amt">${inr(o.amount)}</div><span class="t-badge">${esc(o.badge)}</span></div><div class="t-bot">${o.rows.filter(r=>r[1]).map(r=>`<div class="t-row"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}<div class="t-bars"></div><div class="t-no">${esc(o.number)}</div><p class="t-foot">${esc(o.foot)}</p></div></div>`},
+ fit(root){(root||document).querySelectorAll('.ticket').forEach(t=>t.style.setProperty('--cut',t.querySelector('.t-top').offsetHeight+'px'))},
+ dialog(html){const d=document.createElement('dialog');d.className='dlg glass tk';d.innerHTML=html+`<div class="row" style="margin-top:14px"><button class="btn pri" id="tk_p">${icon('print')}Print</button><button class="btn sec" id="tk_c">Close</button></div>`;document.body.appendChild(d);d.showModal();Ticket.fit(d);
+  const cl=()=>{d.close();d.remove()};d.querySelector('#tk_c').onclick=cl;d.querySelector('#tk_p').onclick=()=>{document.body.classList.add('pt');window.print();document.body.classList.remove('pt')}}};
 function stepper(n){const s=['Details','Payment','Receipt'];return `<div class="steps">${s.map((t,i)=>`<div class="step ${i+1<n?'done':''} ${i+1===n?'on':''}"><b>${i+1<n?'✓':i+1}</b>${t}</div>${i<2?'<i></i>':''}`).join('')}</div>`}
 function mount(){
  const pg=document.body.dataset.page,me=Auth.me(),c=Cfg();
- const L=[['home.html','home','Home','home'],['index.html','heart','Donate','donate'],['donations.html','list','Donations','donations'],['expenses.html','wallet','Expenses','expenses'],['qr.html','qr','QR Code','qr','dsk'],['settings.html','gear','Settings','settings','dsk']]
-  .filter(l=>['donate','qr'].includes(l[3])||(me&&ACCESS[l[3]].includes(me.role)));
- const links=L.map(l=>`<a href="${l[0]}" class="${pg===l[3]?'on':''} ${l[4]||''}" ${pg===l[3]?'aria-current="page"':''}>${icon(l[1])}<span>${l[2]}</span></a>`).join('');
+ const ALL=[['home.html','dash','Dashboard','home'],['donations.html','heart','Donation','donations'],['expenses.html','wallet','Expense','expenses'],['team.html','users','Team','team'],['settings.html','gear','Settings','settings']];
+ const L=me?ALL.filter(l=>ACCESS[l[3]].includes(me.role)):[['index.html','heart','Donate','donate'],['qr.html','qr','QR Code','qr']];
+ const on=l=>pg===l[3]||(me&&l[3]==='donations'&&['donate','qr'].includes(pg));
+ const links=L.map(l=>`<a href="${l[0]}" class="${on(l)?'on':''}" ${on(l)?'aria-current="page"':''}>${icon(l[1])}<span>${l[2]}</span></a>`).join('');
  const brand=`<a class="brand" href="index.html"><span class="om">ॐ</span><span class="bn">${esc(c.event)}<small>${esc(c.committee)}</small></span></a>`;
  const acct=s=>me?`<div class="acct"><button class="avbtn" id="acb${s}" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">${avatar(me,'sm')}<span class="who">${esc(me.name.split(' ')[0])}<small>${me.role}</small></span>${icon('chev')}</button>
- <div class="menu glass" id="mn${s}" role="menu" hidden><div class="mh">${esc(me.name)}<small>${esc(me.email)} · ${me.role}</small></div><a href="profile.html" role="menuitem">${icon('edit')}Edit profile</a>${ACCESS.settings.includes(me.role)?`<a href="settings.html" role="menuitem">${icon('gear')}Settings</a>`:''}<a href="qr.html" role="menuitem">${icon('qr')}QR code</a><button id="lo${s}" role="menuitem">${icon('logout')}Sign out</button></div></div>`
+ <div class="menu glass" id="mn${s}" role="menu" hidden><div class="mh">${esc(me.name)}<small>${esc(me.email)} · ${me.role}</small></div><a href="settings.html" role="menuitem">${icon('edit')}Edit profile</a><a href="index.html" role="menuitem">${icon('heart')}Donation page</a><a href="qr.html" role="menuitem">${icon('qr')}QR code</a><button id="th${s}" role="menuitem">${icon('moon')}Switch theme</button><button id="lo${s}" role="menuitem">${icon('logout')}Sign out</button></div></div>`
   :`<a class="btn pri sm" href="login.html">${icon('login')}Sign in</a>`;
  const nav=document.getElementById('nav');
  if(nav){nav.innerHTML=`<div class="nav glass">${brand}<nav class="links" aria-label="Main">${links}</nav>${acct('d')}</div><header class="mtop glass">${brand}${acct('m')}</header><nav class="mbar glass" aria-label="Main">${links}</nav>`;
@@ -120,7 +128,7 @@ function mount(){
    const cl=()=>{m.hidden=true;b.setAttribute('aria-expanded','false')};
    b.onclick=e=>{e.stopPropagation();m.hidden=!m.hidden;b.setAttribute('aria-expanded',String(!m.hidden))};
    document.addEventListener('click',e=>{if(!m.contains(e.target))cl()});document.addEventListener('keydown',e=>{if(e.key==='Escape')cl()});
-   document.getElementById('lo'+s).onclick=()=>Auth.logout()})}
+   document.getElementById('th'+s).onclick=()=>Theme.toggle();document.getElementById('lo'+s).onclick=()=>Auth.logout()})}
  document.querySelectorAll('[data-i]').forEach(e=>e.innerHTML=icon(e.dataset.i,e.dataset.s));
 }
 document.addEventListener('DOMContentLoaded',mount);

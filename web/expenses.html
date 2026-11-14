@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Expenses | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1b0c02"><title>Expenses | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
 <body data-page="expenses"><div id="nav"></div>
 <main>
  <h1>Expenses</h1><p class="sub" id="sb">Balance = donations collected minus expenses.</p>
@@ -40,7 +40,7 @@ function draw(){
 }
 if(add)$('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim(),a=Number($('a').value);
  if(t.length<2)return $('er').textContent='Enter a title.';if(!(a>0))return $('er').textContent='Enter an amount greater than 0.';if(!$('d').value)return $('er').textContent='Pick a date.';
- const l=Exp.all();l.unshift({id:'E'+Date.now().toString(36),title:t,amount:a,cat:$('c').value,date:$('d').value,payee:$('p').value.trim(),by:me.id});Exp.put(l);
- $('er').textContent='';$('t').value='';$('a').value='';$('p').value='';draw();toast('Expense added.')};
+ const l=Exp.all();const x={id:'E'+Date.now().toString(36),title:t,amount:a,cat:$('c').value,date:$('d').value,payee:$('p').value.trim(),by:me.id};l.unshift(x);Exp.put(l);
+ $('er').textContent='';$('t').value='';$('a').value='';$('p').value='';draw();Ticket.dialog(Ticket.html({org:Cfg().event,kind:'EXPENSE VOUCHER',number:x.id.toUpperCase(),amount:x.amount,badge:'PAID',c1:'#f44336',c2:'#b71c1c',rows:[['Item',x.title],['Category',x.cat],['Paid to',x.payee],['Date',x.date],['Recorded by',me.name]],foot:'Recorded in the mandal accounts.'}))};
 draw();}
 </script></body></html>

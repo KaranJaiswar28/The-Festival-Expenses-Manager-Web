@@ -1,48 +1,65 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#140f3a"><title>Settings | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1b0c02"><title>Settings | Festival Expense Manager</title><link rel="stylesheet" href="css/style.css"></head>
 <body data-page="settings"><div id="nav"></div>
 <main>
- <h1>Admin settings</h1><p class="sub">Event details, users, logins and data. Admin only.</p>
+ <h1>Settings</h1><p class="sub" id="sb">Your profile, password and appearance.</p>
  <div class="grid2">
- <section class="glass card"><h2>Event details</h2>
-  <form id="f" novalidate>
-   <div class="fg"><label for="ev">Event name</label><div class="field"><span data-i="heart"></span><input type="text" id="ev"></div></div>
-   <div class="fg"><label for="cm">Committee / subtitle</label><div class="field"><span data-i="users"></span><input type="text" id="cm"></div></div>
-   <div class="fg"><label for="up">Festival UPI ID</label><div class="field"><span data-i="phone"></span><input type="text" id="up"></div></div>
-   <div class="fg"><label for="am">Quick donation amounts (comma separated)</label><div class="field"><span data-i="rupee"></span><input type="text" id="am"></div></div>
-   <div class="err" id="er"></div>
-   <button class="btn pri" type="submit"><span data-i="ok"></span>Save settings</button>
-  </form></section>
- <section class="glass card"><h2>Role access</h2>
-  <div class="rows"><div><span>Admin</span><b>Everything, edit all, manage logins</b></div><div><span>Treasurer</span><b>View all details, add expenses</b></div><div><span>Member</span><b>View only, no bank details</b></div></div>
-  <h2 style="margin-top:22px">Data</h2><p class="sub">Clears demo donations and expenses stored in this browser.</p>
-  <button class="btn sec" id="rs"><span data-i="trash"></span>Reset donations and expenses</button></section>
+  <section class="glass card"><h2>Edit profile</h2><p class="sub" id="who" style="margin-bottom:14px"></p>
+   <form id="f" novalidate>
+    <div class="fg"><span class="lbl">Avatar colour</span><div class="sw" id="sw"></div></div>
+    <div class="fg"><label for="n">Full name</label><div class="field"><span data-i="user"></span><input type="text" id="n"></div></div>
+    <div class="fg"><label for="e">Email</label><div class="field"><span data-i="mail"></span><input type="email" id="e"></div></div>
+    <div class="fg"><label for="m">Mobile number</label><div class="field"><span data-i="phone"></span><input type="tel" id="m" maxlength="10" inputmode="numeric"></div></div>
+    <div class="err" id="er"></div>
+    <button class="btn pri" type="submit"><span data-i="ok"></span>Save changes</button>
+   </form></section>
+  <section class="glass card"><h2>Password and appearance</h2>
+   <form id="pf" novalidate>
+    <div class="fg"><label for="o">Current password</label><div class="field"><span data-i="lock"></span><input type="password" id="o" autocomplete="current-password"></div></div>
+    <div class="fg"><label for="np">New password</label><div class="field"><span data-i="key"></span><input type="password" id="np" autocomplete="new-password" placeholder="At least 6 characters"></div></div>
+    <div class="err" id="ep"></div>
+    <button class="btn sec" type="submit">Update password</button>
+   </form>
+   <button class="btn sec" id="th"><span data-i="moon"></span>Switch light / dark theme</button>
+   <button class="btn ghost" id="lo" style="color:var(--bad)"><span data-i="logout"></span>Sign out</button></section>
  </div>
- <h2 style="margin:24px 0 12px">Active logins</h2><div class="list" id="ss"></div>
- <h2 style="margin:24px 0 12px">Users</h2><div class="list" id="us"></div>
- <h2 style="margin:24px 0 12px">Login history</h2><div class="glass card" id="lh"></div>
+ <div id="adm" hidden>
+  <h2 style="margin:28px 0 12px">Admin settings</h2>
+  <div class="grid2">
+   <section class="glass card"><h2>Event details</h2>
+    <form id="ef" novalidate>
+     <div class="fg"><label for="ev">Event name</label><div class="field"><span data-i="heart"></span><input type="text" id="ev"></div></div>
+     <div class="fg"><label for="cm">Committee / subtitle</label><div class="field"><span data-i="users"></span><input type="text" id="cm"></div></div>
+     <div class="fg"><label for="up">Mandal UPI ID (shows a real UPI QR on the payment page)</label><div class="field"><span data-i="phone"></span><input type="text" id="up" placeholder="name@bank"></div></div>
+     <div class="fg"><label for="am">Quick donation amounts (comma separated)</label><div class="field"><span data-i="rupee"></span><input type="text" id="am"></div></div>
+     <div class="err" id="eer"></div>
+     <button class="btn pri" type="submit"><span data-i="ok"></span>Save settings</button>
+    </form></section>
+   <section class="glass card"><h2>Role access</h2>
+    <div class="rows"><div><span>Admin</span><b>Everything, edit all, manage logins</b></div><div><span>Treasurer</span><b>View all details, add expenses</b></div><div><span>Member</span><b>View only, no bank details</b></div></div>
+    <h2 style="margin-top:22px">Data</h2><p class="sub">Clears demo donations and expenses stored in this browser.</p>
+    <button class="btn sec" id="rs"><span data-i="trash"></span>Reset donations and expenses</button></section>
+  </div>
+ </div>
 </main>
 <script src="js/app.js"></script>
 <script>
 const me=Auth.require('settings');
-if(me){const $=id=>document.getElementById(id),c=Cfg(),mine=sessionStorage.getItem('fem_sid');
- $('ev').value=c.event;$('cm').value=c.committee;$('up').value=c.upi;$('am').value=c.amounts.join(', ');
- $('f').onsubmit=e=>{e.preventDefault();const am=$('am').value.split(',').map(x=>Number(x.trim())).filter(x=>x>0).slice(0,6);
-  if(!$('ev').value.trim())return $('er').textContent='Enter an event name.';if(!am.length)return $('er').textContent='Enter at least one amount.';
-  DB.set('fem_settings',{event:$('ev').value.trim(),committee:$('cm').value.trim(),upi:$('up').value.trim(),amounts:am});location.reload()};
- $('rs').onclick=()=>{if(confirm('Delete all donations and expenses from this browser?')){Store.clear();Exp.clear();toast('Data reset.')}};
- function sess(){const us=Auth.users();
-  $('ss').innerHTML=Auth.sessions().map(s=>{const u=us.find(x=>x.id===s.uid);if(!u)return'';return `<div class="glass urow">${avatar(u)}<div><b>${esc(u.name)}</b><small>${esc(u.role)} · signed in ${when(s.at)}</small></div><span class="badge b-Success">Online</span>${s.sid===mine?'<span class="badge b-Pending">This device</span>':`<button class="chip" data-s="${s.sid}">${icon('logout')} Remove login</button>`}</div>`}).join('')||'<div class="glass empty"><p>No active logins.</p></div>';
-  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{if(confirm('Sign this user out now?')){Auth.revoke(b.dataset.s);sess();toast('Login removed.')}});
-  $('lh').innerHTML=DB.get('fem_logins',[]).slice(0,15).map(h=>`<div class="mini"><div><b>${esc(h.name)}</b><small>${esc(h.role)} · ${esc(h.how)}</small></div><small>${when(h.at)}</small></div>`).join('')||'<p class="sub">No logins yet.</p>'}
- function users(){$('us').innerHTML=Auth.users().map(u=>`<div class="glass urow">${avatar(u)}<div><b>${esc(u.name)}</b><small>${esc(u.email)}</small></div>
-  <select class="sel" data-r="${u.id}" ${u.id===me.id?'disabled':''} aria-label="Role for ${esc(u.name)}">${['Admin','Treasurer','Member'].map(r=>`<option ${r===u.role?'selected':''}>${r}</option>`).join('')}</select>
-  <div style="display:flex;gap:6px"><button class="chip" data-u="${u.id}" aria-label="Edit ${esc(u.name)}">${icon('edit')}</button>${u.id===me.id?'<span class="badge b-Success">You</span>':`<button class="chip" data-d="${u.id}" aria-label="Remove ${esc(u.name)}">${icon('trash')}</button>`}</div></div>`).join('');
-  document.querySelectorAll('[data-r]').forEach(s=>s.onchange=()=>{Auth.update(s.dataset.r,{role:s.value});toast('Role updated.')});
-  document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{if(confirm('Remove this user and their login?')){Auth.dropUser(b.dataset.d);users();sess()}});
-  document.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{const u=Auth.users().find(x=>x.id===b.dataset.u);Edit.open({title:'Edit user',values:u,
-   fields:[{k:'name',label:'Full name'},{k:'email',label:'Email',type:'email'},{k:'mobile',label:'Mobile',type:'tel'},{k:'role',label:'Role',options:['Admin','Treasurer','Member']},{k:'pw',label:'New password (leave blank to keep)',type:'password'}],
-   onSave:v=>{v.email=v.email.toLowerCase();if(v.name.length<2)return'Enter a name.';if(!/^\S+@\S+\.\S+$/.test(v.email))return'Enter a valid email.';if(Auth.users().some(x=>x.email===v.email&&x.id!==u.id))return'Email already used.';if(v.pw&&v.pw.length<6)return'Password needs 6+ characters.';
-    const p={name:v.name,email:v.email,mobile:v.mobile,role:u.id===me.id?u.role:v.role};if(v.pw)p.pw=hp(v.pw);Auth.update(u.id,p);users();sess()}})})}
- users();sess();
- window.addEventListener('storage',e=>{if(e.key==='fem_sessions'||e.key==='fem_logins')sess()});}
+if(me){const $=id=>document.getElementById(id);let col=me.color||0;
+ $('who').innerHTML=`${avatar(me,'sm')} &nbsp;${esc(me.role)} access`;
+ $('n').value=me.name;$('e').value=me.email;$('m').value=me.mobile||'';
+ const sw=()=>{$('sw').innerHTML=COL.map((k,i)=>`<button type="button" class="${i===col?'on':''}" data-c="${i}" aria-label="Colour ${i+1}" style="background:linear-gradient(135deg,${k[0]},${k[1]})"></button>`).join('');$('sw').querySelectorAll('button').forEach(b=>b.onclick=()=>{col=+b.dataset.c;sw()})};sw();
+ $('f').onsubmit=e=>{e.preventDefault();const n=$('n').value.trim(),em=$('e').value.trim().toLowerCase(),m=$('m').value.trim();
+  if(n.length<2)return $('er').textContent='Enter your name.';if(!/^\S+@\S+\.\S+$/.test(em))return $('er').textContent='Enter a valid email.';if(!/^[6-9]\d{9}$/.test(m))return $('er').textContent='Enter a valid 10-digit mobile number.';
+  if(Auth.users().some(u=>u.email===em&&u.id!==me.id))return $('er').textContent='That email is used by another account.';
+  Auth.update(me.id,{name:n,email:em,mobile:m,color:col});location.reload()};
+ $('pf').onsubmit=e=>{e.preventDefault();if(me.pw!==hp($('o').value))return $('ep').textContent='Current password is incorrect.';if($('np').value.length<6)return $('ep').textContent='New password must be at least 6 characters.';
+  Auth.update(me.id,{pw:hp($('np').value)});$('ep').textContent='';$('o').value=$('np').value='';toast('Password updated.')};
+ $('th').onclick=()=>Theme.toggle();$('lo').onclick=()=>Auth.logout();
+ if(me.role==='Admin'){$('adm').hidden=false;const c=Cfg();
+  $('ev').value=c.event;$('cm').value=c.committee;$('up').value=c.upi;$('am').value=c.amounts.join(', ');
+  $('ef').onsubmit=e=>{e.preventDefault();const am=$('am').value.split(',').map(x=>Number(x.trim())).filter(x=>x>0).slice(0,6),up=$('up').value.trim();
+   if(!$('ev').value.trim())return $('eer').textContent='Enter an event name.';if(!am.length)return $('eer').textContent='Enter at least one amount.';
+   if(up&&!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(up))return $('eer').textContent='Enter a valid UPI ID, for example name@bank.';
+   DB.set('fem_settings',{event:$('ev').value.trim(),committee:$('cm').value.trim(),upi:up,amounts:am});location.reload()};
+  $('rs').onclick=()=>{if(confirm('Delete all donations and expenses from this browser?')){Store.clear();Exp.clear();toast('Data reset.')}}}}
 </script></body></html>

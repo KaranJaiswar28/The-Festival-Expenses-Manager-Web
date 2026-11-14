@@ -3,14 +3,14 @@
    firestore.rules only allows a strictly shaped, create-only donation from the website. */
 const Cloud = {
   ok() { return !!(window.firebase && window.FEM_FIREBASE && FEM_FIREBASE.projectId && window.FEM_MANDAL_ID); },
-  db() { if (!firebase.apps.length) firebase.initializeApp(FEM_FIREBASE); return firebase.firestore(); },
+  db() { if (!firebase.apps.length) { firebase.initializeApp(FEM_FIREBASE); if (window.FEM_USE_EMULATOR) firebase.firestore().useEmulator('localhost', 8080); } return firebase.firestore(); },
   async pushDonation(d) {
     if (!d || d.status !== 'Success' || d.synced || !this.ok()) return false;
     try {
       const db = this.db(), base = db.collection('mandals').doc(FEM_MANDAL_ID), id = 'WEB-' + d.id, b = db.batch();
       b.set(base.collection('donations').doc(id), {
         receiptNo: id, donorName: String(d.name).slice(0, 80), amount: Number(d.amount), paymentMethod: d.method,
-        purpose: 'Online donation', date: d.paidAt || d.createdAt, createdBy: 'Website', source: 'Website', status: 'Success'
+        purpose: 'Online donation', date: d.paidAt || d.createdAt, createdBy: 'Website', receivedBy: 'Online', source: 'Website', status: 'Success'
       });
       b.set(base.collection('donationPrivate').doc(id), {
         mobile: String(d.mobile || ''), address: '', remarks: String(d.remarks || '').slice(0, 300),
